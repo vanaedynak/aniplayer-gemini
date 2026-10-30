@@ -41,7 +41,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm install
@@ -52,7 +51,7 @@ jobs:
           npx vite build
 
       - name: Build Windows Installer (NSIS)
-        run: npx electron-builder --win --x64 -c.publish=never
+        run: npx electron-builder --win --x64 -p never
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
@@ -71,7 +70,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm install
@@ -85,7 +83,7 @@ jobs:
       - name: Build Unsigned iOS Archive (.xcarchive)
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace \
+          xcodebuild -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -destination 'generic/platform=iOS' \
@@ -147,7 +145,7 @@ jobs:
             Кроссплатформенный аниме-плеер в стиле Animix для Windows и iPad.
             
             ### Файлы для установки:
-            - **Windows**: `AniPlayer-Setup-*.exe` — запускаемый установщик с ярлыком на рабочем столе и поддержкой автообновлений.
+            - **Windows**: `AniPlayer-Setup-*.exe` — запускаемый установщик с ярлыком на рабочем столе и автообновлениями.
             - **iPad**: `AniPlayer.ipa` — неподписанный пакет для установки через сайдлоад (TrollStore, AltStore, Sideloadly, Scarlet).
             
             ### Возможности:
