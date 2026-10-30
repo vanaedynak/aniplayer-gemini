@@ -11,7 +11,7 @@ export const Header: React.FC = () => {
   } = usePlayerStore();
 
   const [isMaximized, setIsMaximized] = useState(false);
-  const [appVersion, setAppVersion] = useState<string>('1.0.2');
+  const [appVersion, setAppVersion] = useState<string>('1.0.3');
 
   useEffect(() => {
     if (window.electronAPI) {
@@ -22,9 +22,31 @@ export const Header: React.FC = () => {
     }
   }, []);
 
-  const handleMinimize = () => window.electronAPI?.minimize();
-  const handleMaximize = () => window.electronAPI?.maximize();
-  const handleClose = () => window.electronAPI?.close();
+  const handleMinimize = () => {
+    if (window.electronAPI?.minimize) {
+      window.electronAPI.minimize();
+    }
+  };
+
+  const handleMaximize = () => {
+    if (window.electronAPI?.maximize) {
+      window.electronAPI.maximize().then(setIsMaximized);
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+      setIsMaximized(false);
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {});
+      setIsMaximized(true);
+    }
+  };
+
+  const handleClose = () => {
+    if (window.electronAPI?.close) {
+      window.electronAPI.close();
+    } else {
+      window.close();
+    }
+  };
 
   return (
     <header className="h-14 bg-[#0B0E14] border-b border-white/5 flex items-center justify-between px-4 z-40 select-none drag-region">
@@ -105,32 +127,37 @@ export const Header: React.FC = () => {
           <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-violet-400 rounded-full border-2 border-[#0B0E14]" />
         </div>
 
-        {/* Windows Electron Controls */}
-        {window.electronAPI && (
-          <div className="flex items-center space-x-1 pl-2 border-l border-white/10">
-            <button
-              onClick={handleMinimize}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition"
-              title="Свернуть"
-            >
-              <Minus size={14} />
-            </button>
-            <button
-              onClick={handleMaximize}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition"
-              title={isMaximized ? 'Восстановить' : 'Развернуть'}
-            >
-              <Square size={12} />
-            </button>
-            <button
-              onClick={handleClose}
-              className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/20 rounded transition"
-              title="Закрыть"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
+        {/* Windows / Desktop Window Controls (Always available with graceful fallback) */}
+        <div className="flex items-center space-x-1 pl-2 border-l border-white/10">
+          <button
+            onClick={handleClose}
+            className="text-xs font-semibold text-red-400 hover:text-red-300 px-2 py-1 hover:bg-red-500/10 rounded transition hidden sm:inline-block"
+            title="Выйти из приложения"
+          >
+            Выйти
+          </button>
+          <button
+            onClick={handleMinimize}
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition"
+            title="Свернуть"
+          >
+            <Minus size={14} />
+          </button>
+          <button
+            onClick={handleMaximize}
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition"
+            title={isMaximized ? 'Восстановить' : 'Развернуть'}
+          >
+            <Square size={12} />
+          </button>
+          <button
+            onClick={handleClose}
+            className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/20 rounded transition"
+            title="Закрыть (✕)"
+          >
+            <X size={15} />
+          </button>
+        </div>
       </div>
     </header>
   );

@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { AnimixPlayer } from './player/AnimixPlayer';
 import { YummyAnimeService } from '../services/yummyanime';
+import { AnimePoster } from './common/AnimePoster';
 import { ArrowLeft, SkipBack, SkipForward, Mic, Info } from 'lucide-react';
+import { AnimeEpisode } from '../types/anime';
 
 export const PlayerView: React.FC = () => {
   const {
@@ -48,22 +50,37 @@ export const PlayerView: React.FC = () => {
     );
   }
 
+  const totalEpisodesCount =
+    selectedAnime.episodes.length > 0
+      ? selectedAnime.episodes.length
+      : selectedAnime.episodesTotal || selectedAnime.episodesAired || 12;
+
+  const episodesList: AnimeEpisode[] =
+    selectedAnime.episodes.length > 0
+      ? selectedAnime.episodes
+      : Array.from({ length: totalEpisodesCount }, (_, i) => ({
+          id: `${selectedAnime.id}-${i + 1}`,
+          ordinal: i + 1,
+          title: `${i + 1} серия`,
+          thumbnail: selectedAnime.poster,
+        }));
+
   const handleNextEpisode = () => {
-    const next = selectedAnime.episodes.find((e) => e.ordinal === currentEpisode.ordinal + 1);
+    const next = episodesList.find((e) => e.ordinal === currentEpisode.ordinal + 1);
     if (next) {
       playEpisode(next);
     }
   };
 
   const handlePrevEpisode = () => {
-    const prev = selectedAnime.episodes.find((e) => e.ordinal === currentEpisode.ordinal - 1);
+    const prev = episodesList.find((e) => e.ordinal === currentEpisode.ordinal - 1);
     if (prev) {
       playEpisode(prev);
     }
   };
 
-  const hasNext = selectedAnime.episodes.some((e) => e.ordinal === currentEpisode.ordinal + 1);
-  const hasPrev = selectedAnime.episodes.some((e) => e.ordinal === currentEpisode.ordinal - 1);
+  const hasNext = episodesList.some((e) => e.ordinal === currentEpisode.ordinal + 1);
+  const hasPrev = episodesList.some((e) => e.ordinal === currentEpisode.ordinal - 1);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 select-none max-w-6xl mx-auto w-full">
@@ -186,10 +203,10 @@ export const PlayerView: React.FC = () => {
       {/* Episode Carousel / Grid Below Player */}
       <div className="space-y-3">
         <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-          Все серии ({selectedAnime.episodes.length || 0})
+          Все серии ({episodesList.length})
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-          {selectedAnime.episodes.map((ep) => {
+          {episodesList.map((ep) => {
             const isCurrent = ep.ordinal === currentEpisode.ordinal;
             return (
               <div
@@ -202,10 +219,10 @@ export const PlayerView: React.FC = () => {
                 }`}
               >
                 <div className="relative aspect-video rounded-xl overflow-hidden bg-black/40">
-                  <img
+                  <AnimePoster
                     src={ep.thumbnail || selectedAnime.poster}
-                    alt=""
-                    className="w-full h-full object-cover"
+                    alt={ep.title}
+                    title={ep.title}
                   />
                   {isCurrent && (
                     <div className="absolute inset-0 bg-violet-600/40 flex items-center justify-center font-bold text-xs text-white">

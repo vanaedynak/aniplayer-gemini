@@ -49,6 +49,7 @@ jobs:
         run: |
           npm run build
           npx vite build
+          node -e "fs.copyFileSync('electron/preload.cjs','dist-electron/preload.cjs')"
 
       - name: Build Windows Installer (NSIS)
         run: npx electron-builder --win --x64 -p never

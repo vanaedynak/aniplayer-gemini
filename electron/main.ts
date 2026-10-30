@@ -24,7 +24,7 @@ function createWindow() {
     show: false,
     icon: path.join(process.env.VITE_PUBLIC || '', 'icon.ico'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false,
@@ -74,6 +74,12 @@ ipcMain.handle('window-is-maximized', () => {
 
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
+});
+
+ipcMain.handle('set-zoom-factor', (_event, factor: number) => {
+  if (win && factor > 0) {
+    win.webContents.setZoomFactor(factor);
+  }
 });
 
 ipcMain.handle('open-external', (_event, url: string) => {

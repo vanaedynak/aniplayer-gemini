@@ -46,6 +46,27 @@ async function runTests() {
     }
   }
 
+  console.log('\n--- 5. Testing AniLibria findReleaseEpisodes (Steins;Gate & Frieren) ---');
+  const sg = await al.findReleaseEpisodes('Врата Штейна', 'Steins;Gate', 9253);
+  console.log(`Steins;Gate episodes found: ${sg.episodes.length} (Expected >= 24)`);
+  if (sg.episodes.length > 0) {
+    console.log(`  Ep 1 HLS: ${sg.episodes[0].hls?.fhd || sg.episodes[0].hls?.hd}`);
+  }
+
+  const frieren = await al.findReleaseEpisodes('Провожающая в последний путь Фрирен', 'Sousou no Frieren', 52991);
+  console.log(`Frieren episodes found: ${frieren.episodes.length} (Expected >= 28)`);
+  if (frieren.episodes.length > 0) {
+    console.log(`  Ep 1 HLS: ${frieren.episodes[0].hls?.fhd || frieren.episodes[0].hls?.hd}`);
+  }
+
+  console.log('\n--- 6. Testing Death Note Poster Resolution ---');
+  const dn = await shiki.search('Тетрадь смерти');
+  console.log(`Death Note search results: ${dn.length}`);
+  if (dn.length > 0) {
+    console.log(`Death Note poster: ${dn[0].poster}`);
+    console.log(`  ✓ Does NOT contain missing_: ${!dn[0].poster.includes('missing_') ? 'YES' : 'NO'}`);
+  }
+
   console.log('\n🎉 ALL VERIFICATION TESTS COMPLETED SUCCESSFULLY!');
 }
 

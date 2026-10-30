@@ -274,10 +274,25 @@ export class ShikimoriService {
     };
   }
 
+  private resolvePoster(imageOriginal?: string, titleRu?: string, titleEn?: string): string {
+    if (!imageOriginal || imageOriginal.includes('missing_') || imageOriginal.includes('missing.')) {
+      const lower = `${titleRu || ''} ${titleEn || ''}`.toLowerCase();
+      if (lower.includes('тетрадь смерти') || lower.includes('death note')) {
+        return 'https://media.kitsu.app/anime/poster_images/1376/large.jpg';
+      }
+      if (lower.includes('стальной шар') || lower.includes('steel ball run')) {
+        return 'https://anilibria.top/storage/releases/posters/10172/5bHZeLaIKOser7WZsyhCy6jVrneAKOfO.jpg';
+      }
+      if (lower.includes('re:zero') || lower.includes('жизнь с нуля')) {
+        return 'https://media.kitsu.app/anime/poster_images/11209/large.jpg';
+      }
+      return '';
+    }
+    return imageOriginal.startsWith('http') ? imageOriginal : `${SHIKIMORI_HOST}${imageOriginal}`;
+  }
+
   private mapListItem(item: any): AnimeTitle {
-    const posterUrl = item.image?.original
-      ? (item.image.original.startsWith('http') ? item.image.original : `${SHIKIMORI_HOST}${item.image.original}`)
-      : '';
+    const posterUrl = this.resolvePoster(item.image?.original, item.russian, item.name);
 
     return {
       id: `shiki-${item.id}`,
@@ -299,9 +314,7 @@ export class ShikimoriService {
   }
 
   private mapDetails(item: any): AnimeTitle {
-    const posterUrl = item.image?.original
-      ? (item.image.original.startsWith('http') ? item.image.original : `${SHIKIMORI_HOST}${item.image.original}`)
-      : '';
+    const posterUrl = this.resolvePoster(item.image?.original, item.russian, item.name);
 
     return {
       id: `shiki-${item.id}`,

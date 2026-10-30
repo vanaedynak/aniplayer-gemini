@@ -29,6 +29,59 @@ export class AniLibriaService {
     }
   }
 
+  /**
+   * Finds matching release on AniLibria and fetches its full episode list with HLS streams and skip timecodes.
+   */
+  public async findReleaseEpisodes(
+    titleRu: string,
+    titleEn?: string,
+    shikimoriId?: number
+  ): Promise<{ release: AnimeTitle | null; episodes: AnimeEpisode[] }> {
+    try {
+      const cleanTitle = (titleRu || titleEn || '').trim();
+      if (!cleanTitle) return { release: null, episodes: [] };
+
+      // Query AniLibria search
+      const url = `${ANILIBRIA_API_V1}/app/search/releases?query=${encodeURIComponent(cleanTitle)}`;
+      const res = await fetch(url);
+      if (!res.ok) return { release: null, episodes: [] };
+      const list = await res.json();
+      if (!Array.isArray(list) || list.length === 0) {
+        // Try fallback with English title if different
+        if (titleEn && titleEn !== cleanTitle) {
+          const fallbackRes = await fetch(`${ANILIBRIA_API_V1}/app/search/releases?query=${encodeURIComponent(titleEn.trim())}`);
+          if (fallbackRes.ok) {
+            const fallbackList = await fallbackRes.json();
+            if (Array.isArray(fallbackList) && fallbackList.length > 0) {
+              const fullFallback = await this.getTitleById(fallbackList[0].id);
+              if (fullFallback && fullFallback.episodes.length > 0) {
+                return { release: fullFallback, episodes: fullFallback.episodes };
+              }
+            }
+          }
+        }
+        return { release: null, episodes: [] };
+      }
+
+      // Match by Shikimori ID if possible, otherwise by exact title or first match
+      let matched = list[0];
+      if (shikimoriId) {
+        const byShiki = list.find((item: any) => item.shikimori?.id === shikimoriId);
+        if (byShiki) matched = byShiki;
+      }
+
+      // Fetch the full release details to obtain episodes with HLS links
+      const full = await this.getTitleById(matched.id);
+      if (full && full.episodes.length > 0) {
+        return { release: full, episodes: full.episodes };
+      }
+      return { release: full, episodes: [] };
+    } catch (err) {
+      console.error('AniLibria findReleaseEpisodes error:', err);
+      return { release: null, episodes: [] };
+    }
+  }
+
   public async getSchedule(): Promise<{ day: number; titles: AnimeTitle[] }[]> {
     try {
       const url = `${ANILIBRIA_API_V1}/anime/schedule/week`;

@@ -12,6 +12,7 @@ const electronAPI = {
   maximize: () => ipcRenderer.invoke('window-maximize'),
   close: () => ipcRenderer.invoke('window-close'),
   isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+  setZoomFactor: (factor: number) => ipcRenderer.invoke('set-zoom-factor', factor),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),

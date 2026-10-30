@@ -49,41 +49,39 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [settings.theme]);
 
-  const scale = settings.uiScale || 1.0;
+  // Handle native zoom scaling without viewport shifting or gutters
+  useEffect(() => {
+    const scale = settings.uiScale || 1.0;
+    if (window.electronAPI?.setZoomFactor) {
+      window.electronAPI.setZoomFactor(scale);
+    } else {
+      (document.documentElement as HTMLElement).style.zoom = String(scale);
+    }
+  }, [settings.uiScale]);
 
   return (
-    <div className="w-screen h-screen overflow-hidden bg-[#0B0E14] flex items-center justify-center">
-      <div
-        style={{
-          transform: `scale(${scale})`,
-          transformOrigin: 'top left',
-          width: `calc(100vw / ${scale})`,
-          height: `calc(100vh / ${scale})`,
-        }}
-        className="flex flex-col overflow-hidden bg-[#0B0E14] text-white pt-safe pb-safe pl-safe pr-safe font-sans"
-      >
-        {/* Top Header */}
-        <Header />
+    <div className="w-screen h-screen overflow-hidden bg-[#0B0E14] flex flex-col text-white pt-safe pb-safe pl-safe pr-safe font-sans select-none">
+      {/* Top Header */}
+      <Header />
 
-        {/* Main Body */}
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
+      {/* Main Body */}
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
 
-          <main className="flex-1 overflow-hidden flex flex-col bg-[#0B0E14]">
-            {currentView === 'home' && <HomeView />}
-            {currentView === 'title_detail' && <TitleDetailView />}
-            {currentView === 'player' && <PlayerView />}
-            {currentView === 'profile' && <ProfileView />}
-            {currentView === 'categories' && <CategoriesView />}
-            {currentView === 'collection' && <CollectionView />}
-            {currentView === 'leaderboard' && <LeaderboardView />}
-            {currentView === 'manga' && <MangaView />}
-          </main>
-        </div>
-
-        {/* Search Modal */}
-        <SearchModal />
+        <main className="flex-1 overflow-hidden flex flex-col bg-[#0B0E14]">
+          {currentView === 'home' && <HomeView />}
+          {currentView === 'title_detail' && <TitleDetailView />}
+          {currentView === 'player' && <PlayerView />}
+          {currentView === 'profile' && <ProfileView />}
+          {currentView === 'categories' && <CategoriesView />}
+          {currentView === 'collection' && <CollectionView />}
+          {currentView === 'leaderboard' && <LeaderboardView />}
+          {currentView === 'manga' && <MangaView />}
+        </main>
       </div>
+
+      {/* Search Modal */}
+      <SearchModal />
     </div>
   );
 };

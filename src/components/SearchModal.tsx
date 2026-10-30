@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { ShikimoriService } from '../services/shikimori';
 import { AniLibriaService } from '../services/anilibria';
+import { AnimePoster } from './common/AnimePoster';
 import { AnimeTitle } from '../types/anime';
 import { Search, X, Star } from 'lucide-react';
 
@@ -82,13 +83,13 @@ export const SearchModal: React.FC = () => {
       if (details) readyAnime = { ...readyAnime, ...details };
     }
 
-    // Check AniLibria for episodes if not attached
+    // Check AniLibria for full release & episodes if not attached
     if (readyAnime.episodes.length === 0) {
-      const alResults = await anilibria.search(readyAnime.titleRu || readyAnime.titleEn);
-      if (alResults.length > 0 && alResults[0].episodes.length > 0) {
-        readyAnime.episodes = alResults[0].episodes;
+      const alRes = await anilibria.findReleaseEpisodes(readyAnime.titleRu, readyAnime.titleEn, readyAnime.shikimoriId);
+      if (alRes.episodes.length > 0) {
+        readyAnime.episodes = alRes.episodes;
         readyAnime.hasAniLibria = true;
-        readyAnime.anilibriaCode = alResults[0].anilibriaCode;
+        readyAnime.anilibriaCode = alRes.release?.anilibriaCode || readyAnime.anilibriaCode;
       }
     }
 
@@ -160,11 +161,13 @@ export const SearchModal: React.FC = () => {
               onClick={() => handleSelectAnime(item)}
               className="bg-[#181E2B] hover:bg-[#202738] p-3 rounded-2xl flex items-center space-x-3 cursor-pointer group transition border border-white/5 hover:border-violet-500/30"
             >
-              <img
-                src={item.poster}
-                alt=""
-                className="w-12 h-16 rounded-xl object-cover shrink-0"
-              />
+              <div className="w-12 h-16 rounded-xl overflow-hidden shrink-0">
+                <AnimePoster
+                  src={item.poster}
+                  alt={item.titleRu}
+                  title={item.titleRu}
+                />
+              </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center space-x-2">
                   <h4 className="text-sm font-bold text-white truncate group-hover:text-violet-300">

@@ -4,6 +4,7 @@ import { AniLibriaService } from '../services/anilibria';
 import { ShikimoriService } from '../services/shikimori';
 import { YummyAnimeService } from '../services/yummyanime';
 import { StorageService } from '../services/storage';
+import { AnimePoster } from './common/AnimePoster';
 import {
   Play,
   ArrowLeft,
@@ -17,7 +18,7 @@ import {
   Check,
   ChevronDown,
 } from 'lucide-react';
-import { AnimeStatus } from '../types/anime';
+import { AnimeEpisode, AnimeStatus } from '../types/anime';
 
 export const TitleDetailView: React.FC = () => {
   const {
@@ -80,6 +81,29 @@ export const TitleDetailView: React.FC = () => {
         });
       }
     }
+
+    // Ensure episodes from AniLibria are fetched if not yet loaded
+    if (selectedAnime.episodes.length === 0) {
+      setLoading(true);
+      anilibria
+        .findReleaseEpisodes(selectedAnime.titleRu, selectedAnime.titleEn, selectedAnime.shikimoriId)
+        .then(({ release, episodes }) => {
+          setLoading(false);
+          if (episodes.length > 0) {
+            usePlayerStore.setState((state) => ({
+              selectedAnime: state.selectedAnime
+                ? {
+                    ...state.selectedAnime,
+                    hasAniLibria: true,
+                    anilibriaCode: release?.anilibriaCode || state.selectedAnime.anilibriaCode,
+                    episodes,
+                  }
+                : null,
+            }));
+          }
+        })
+        .catch(() => setLoading(false));
+    }
   }, [selectedAnime?.id]);
 
   if (!selectedAnime) {
@@ -101,14 +125,29 @@ export const TitleDetailView: React.FC = () => {
     startWatching(selectedAnime, 1, activeVoice);
   };
 
+  const totalEpisodesCount =
+    selectedAnime.episodes.length > 0
+      ? selectedAnime.episodes.length
+      : selectedAnime.episodesTotal || selectedAnime.episodesAired || 12;
+
+  const displayEpisodes: AnimeEpisode[] =
+    selectedAnime.episodes.length > 0
+      ? selectedAnime.episodes
+      : Array.from({ length: totalEpisodesCount }, (_, i) => ({
+          id: `${selectedAnime.id}-${i + 1}`,
+          ordinal: i + 1,
+          title: `${i + 1} серия`,
+          thumbnail: selectedAnime.poster,
+        }));
+
   return (
     <div className="flex-1 overflow-y-auto select-none">
       {/* Hero Backdrop Header */}
-      <div className="relative w-full h-80 sm:h-96 overflow-hidden">
+      <div className="relative w-full h-72 sm:h-80 overflow-hidden">
         <img
           src={selectedAnime.poster}
           alt=""
-          className="w-full h-full object-cover scale-110 blur-xl opacity-30"
+          className="w-full h-full object-cover scale-110 blur-2xl opacity-40"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0B0E14] via-[#0B0E14]/80 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#0B0E14] via-transparent to-[#0B0E14]" />
@@ -117,7 +156,7 @@ export const TitleDetailView: React.FC = () => {
         <div className="absolute top-6 left-6 z-20">
           <button
             onClick={() => setView('home')}
-            className="flex items-center space-x-2 bg-[#121620]/80 hover:bg-[#181E2B] backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-white text-xs font-bold transition shadow-lg"
+            className="flex items-center space-x-2 bg-[#121620]/90 hover:bg-[#181E2B] backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-white text-xs font-bold transition shadow-lg"
           >
             <ArrowLeft size={16} />
             <span>Назад</span>
@@ -126,14 +165,15 @@ export const TitleDetailView: React.FC = () => {
       </div>
 
       {/* Main Content Info Container */}
-      <div className="max-w-6xl mx-auto px-6 -mt-48 relative z-20 space-y-8 pb-16">
+      <div className="max-w-6xl mx-auto px-6 -mt-36 relative z-20 space-y-8 pb-16">
         <div className="flex flex-col md:flex-row gap-8 items-start">
           {/* High-res Poster */}
-          <div className="w-56 sm:w-64 aspect-[3/4] rounded-3xl overflow-hidden shadow-2xl border-2 border-white/10 shrink-0 relative group">
-            <img
+          <div className="w-52 sm:w-64 aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border-2 border-white/10 shrink-0 relative group bg-[#121620]">
+            <AnimePoster
               src={selectedAnime.poster}
               alt={selectedAnime.titleRu}
-              className="w-full h-full object-cover"
+              title={selectedAnime.titleRu}
+              loading="eager"
             />
             {selectedAnime.hasAniLibria && (
               <span className="absolute top-3 left-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-neon">
@@ -295,7 +335,7 @@ export const TitleDetailView: React.FC = () => {
               }`}
             >
               <Tv size={16} />
-              <span>Список серий ({selectedAnime.episodes.length || selectedAnime.episodesTotal || 0})</span>
+              <span>Список серий ({displayEpisodes.length})</span>
             </button>
 
             <button
@@ -314,49 +354,34 @@ export const TitleDetailView: React.FC = () => {
           {/* Episodes Tab Content */}
           {activeTab === 'episodes' && (
             <div className="space-y-4">
-              {selectedAnime.episodes.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {selectedAnime.episodes.map((ep) => (
-                    <div
-                      key={ep.id}
-                      onClick={() => startWatching(selectedAnime, ep.ordinal, activeVoice)}
-                      className="bg-[#121620] hover:bg-[#181E2B] rounded-2xl overflow-hidden cursor-pointer group transition border border-white/5 hover:border-violet-500/40 hover:shadow-card flex flex-col"
-                    >
-                      <div className="relative aspect-video overflow-hidden">
-                        <img
-                          src={ep.thumbnail || selectedAnime.poster}
-                          alt={ep.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="w-10 h-10 rounded-full bg-violet-600 text-white flex items-center justify-center shadow-neon">
-                            <Play size={18} className="fill-current ml-0.5" />
-                          </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {displayEpisodes.map((ep) => (
+                  <div
+                    key={ep.id}
+                    onClick={() => startWatching(selectedAnime, ep.ordinal, activeVoice)}
+                    className="bg-[#121620] hover:bg-[#181E2B] rounded-2xl overflow-hidden cursor-pointer group transition border border-white/5 hover:border-violet-500/40 hover:shadow-card flex flex-col"
+                  >
+                    <div className="relative aspect-video overflow-hidden bg-black/40">
+                      <AnimePoster
+                        src={ep.thumbnail || selectedAnime.poster}
+                        alt={ep.title}
+                        title={ep.title}
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="w-9 h-9 rounded-full bg-violet-600 text-white flex items-center justify-center shadow-neon">
+                          <Play size={16} className="fill-current ml-0.5" />
                         </div>
                       </div>
-                      <div className="p-3">
-                        <span className="text-xs font-bold text-white block truncate">
-                          {ep.title || `${ep.ordinal} серия`}
-                        </span>
-                        <span className="text-[11px] text-gray-400">Серия {ep.ordinal}</span>
-                      </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-[#121620] p-8 rounded-3xl text-center space-y-3 border border-white/5">
-                  <h4 className="text-sm font-bold text-white">Серии доступны в плеере</h4>
-                  <p className="text-xs text-gray-400 max-w-md mx-auto">
-                    Вы можете нажать кнопку «Смотреть», чтобы открыть воспроизведение серии в плеере.
-                  </p>
-                  <button
-                    onClick={handleStartPlay}
-                    className="bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-6 py-2.5 rounded-full shadow-neon transition"
-                  >
-                    Запустить плеер
-                  </button>
-                </div>
-              )}
+                    <div className="p-2.5">
+                      <span className="text-xs font-bold text-white block truncate">
+                        {ep.title || `${ep.ordinal} серия`}
+                      </span>
+                      <span className="text-[10px] text-gray-400">Серия {ep.ordinal}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

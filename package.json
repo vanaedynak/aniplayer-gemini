@@ -1,14 +1,14 @@
 {
   "name": "aniplayer",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "AniPlayer — аниме-плеер нового поколения для Windows и iPad",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "cross-env BUILD_TARGET=web vite build",
-    "build:electron": "vite build && electron-builder",
-    "pack": "vite build && electron-builder --dir",
+    "build:electron": "vite build && node -e \"fs.copyFileSync('electron/preload.cjs','dist-electron/preload.cjs')\" && electron-builder",
+    "pack": "vite build && node -e \"fs.copyFileSync('electron/preload.cjs','dist-electron/preload.cjs')\" && electron-builder --dir",
     "preview": "vite preview",
     "cap:sync": "npx cap sync ios",
     "cap:open": "npx cap open ios"

@@ -10,6 +10,21 @@ export default defineConfig(() => {
   return {
     plugins: [
       react(),
+      {
+        name: 'copy-preload-cjs',
+        closeBundle() {
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            fs.copyFileSync(
+              path.resolve(__dirname, 'electron/preload.cjs'),
+              path.resolve(__dirname, 'dist-electron/preload.cjs')
+            );
+          } catch (e) {
+            // ignore if not running in node cjs
+          }
+        },
+      },
       ...(!isWebOrCapacitor
         ? [
             electron([
@@ -34,6 +49,11 @@ export default defineConfig(() => {
                     outDir: 'dist-electron',
                     rollupOptions: {
                       external: ['electron'],
+                      output: {
+                        format: 'cjs',
+                        entryFileNames: 'preload.cjs',
+                        inlineDynamicImports: true,
+                      },
                     },
                   },
                 },

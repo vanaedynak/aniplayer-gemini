@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { ShikimoriService, ANIME_GENRES } from '../services/shikimori';
 import { AniLibriaService } from '../services/anilibria';
+import { AnimePoster } from './common/AnimePoster';
 import { AnimeTitle } from '../types/anime';
 import { Layers, Star, ArrowUpDown } from 'lucide-react';
 
@@ -57,12 +58,12 @@ export const CategoriesView: React.FC = () => {
       const details = await shikimori.getAnimeDetails(anime.shikimoriId);
       if (details) full = details;
     }
-    // Check AniLibria for episodes
-    const alResults = await anilibria.search(full.titleRu || full.titleEn);
-    if (alResults.length > 0 && alResults[0].episodes.length > 0) {
-      full.episodes = alResults[0].episodes;
+    // Check AniLibria for full release details & episodes
+    const alRes = await anilibria.findReleaseEpisodes(full.titleRu, full.titleEn, full.shikimoriId);
+    if (alRes.episodes.length > 0) {
+      full.episodes = alRes.episodes;
       full.hasAniLibria = true;
-      full.anilibriaCode = alResults[0].anilibriaCode;
+      full.anilibriaCode = alRes.release?.anilibriaCode || full.anilibriaCode;
     }
     openAnimeDetails(full);
   };
@@ -122,16 +123,17 @@ export const CategoriesView: React.FC = () => {
             className="bg-[#121620] hover:bg-[#181E2B] rounded-2xl overflow-hidden cursor-pointer group transition-all duration-300 border border-white/5 hover:border-violet-500/40 hover:shadow-card flex flex-col"
           >
             <div className="relative aspect-[3/4] overflow-hidden bg-black/30">
-              <img
+              <AnimePoster
                 src={anime.poster}
                 alt={anime.titleRu}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                loading="lazy"
+                title={anime.titleRu}
+                badge={
+                  <div className="absolute top-2 right-2 bg-[#0B0E14]/80 backdrop-blur-md text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10 flex items-center space-x-1 z-10">
+                    <Star size={10} className="fill-current" />
+                    <span>{anime.score ? anime.score.toFixed(1) : '8.0'}</span>
+                  </div>
+                }
               />
-              <div className="absolute top-2 right-2 bg-[#0B0E14]/80 backdrop-blur-md text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10 flex items-center space-x-1">
-                <Star size={10} className="fill-current" />
-                <span>{anime.score ? anime.score.toFixed(1) : '8.0'}</span>
-              </div>
             </div>
             <div className="p-3 space-y-1">
               <h4 className="text-xs font-bold text-white truncate group-hover:text-violet-300 transition">
