@@ -3,6 +3,33 @@ import { AnimeTitle, FranchiseItem, FranchiseTree } from '../types/anime';
 const SHIKIMORI_API_BASE = 'https://shikimori.one/api';
 const SHIKIMORI_HOST = 'https://shikimori.one';
 
+export interface GenreItem {
+  id: number;
+  name: string;
+}
+
+export const ANIME_GENRES: GenreItem[] = [
+  { id: 0, name: 'Все жанры' },
+  { id: 27, name: 'Сёнен' },
+  { id: 1, name: 'Экшен' },
+  { id: 2, name: 'Приключения' },
+  { id: 10, name: 'Фэнтези' },
+  { id: 4, name: 'Комедия' },
+  { id: 8, name: 'Драма' },
+  { id: 22, name: 'Романтика' },
+  { id: 7, name: 'Детектив' },
+  { id: 24, name: 'Фантастика' },
+  { id: 37, name: 'Мистика' },
+  { id: 41, name: 'Триллер' },
+  { id: 36, name: 'Повседневность' },
+  { id: 30, name: 'Спорт' },
+  { id: 18, name: 'Меха' },
+  { id: 40, name: 'Психологическое' },
+  { id: 14, name: 'Ужасы' },
+  { id: 42, name: 'Сэйнэн' },
+  { id: 25, name: 'Сёдзё' },
+];
+
 export class ShikimoriService {
   private static instance: ShikimoriService;
 
@@ -15,14 +42,31 @@ export class ShikimoriService {
 
   private headers() {
     return {
-      'User-Agent': 'AniPlayer-App/1.0.0 (https://github.com/vanaedynak/aniplayer)',
+      'User-Agent': 'AniPlayer-App/1.0.0 (https://github.com/vanaedynak/aniplayer-gemini)',
     };
+  }
+
+  public async getCatalog(genreId: number = 0, order: string = 'ranked', page: number = 1, limit: number = 40): Promise<AnimeTitle[]> {
+    try {
+      let url = `${SHIKIMORI_API_BASE}/animes?order=${order}&page=${page}&limit=${limit}`;
+      if (genreId > 0) {
+        url += `&genre=${genreId}`;
+      }
+      const res = await fetch(url, { headers: this.headers() });
+      if (!res.ok) return [];
+      const list = await res.json();
+      if (!Array.isArray(list)) return [];
+      return list.map((item: any) => this.mapListItem(item));
+    } catch (err) {
+      console.error('Shikimori getCatalog error:', err);
+      return [];
+    }
   }
 
   public async search(query: string): Promise<AnimeTitle[]> {
     if (!query || query.trim().length === 0) return [];
     try {
-      const url = `${SHIKIMORI_API_BASE}/animes?search=${encodeURIComponent(query.trim())}&limit=25`;
+      const url = `${SHIKIMORI_API_BASE}/animes?search=${encodeURIComponent(query.trim())}&limit=30`;
       const res = await fetch(url, { headers: this.headers() });
       if (!res.ok) return [];
       const list = await res.json();
@@ -67,7 +111,6 @@ export class ShikimoriService {
     const nodes = data.nodes || [];
     const links = data.links || [];
 
-    // Map of relations
     const spinOffIds = new Set<number>();
     for (const link of links) {
       if (link.relation === 'spin_off' || link.relation === 'alternative_setting') {
@@ -75,7 +118,6 @@ export class ShikimoriService {
       }
     }
 
-    // Sort nodes chronologically by year/date
     const sortedNodes = [...nodes].sort((a, b) => {
       const dateA = a.date || a.year || 0;
       const dateB = b.date || b.year || 0;
@@ -98,12 +140,10 @@ export class ShikimoriService {
         ? (node.image_url.startsWith('http') ? node.image_url : `${SHIKIMORI_HOST}${node.image_url}`)
         : '';
 
-      // Skip pure music clips
       if (rawKind.includes('клип') || rawKind.includes('music')) {
         continue;
       }
 
-      // Check if spin-off
       const isSpinOff =
         spinOffIds.has(node.id) ||
         titleRu.toLowerCase().includes('чиби') ||
@@ -129,7 +169,6 @@ export class ShikimoriService {
         continue;
       }
 
-      // Check if Movie
       if (rawKind.includes('фильм') || rawKind.includes('movie')) {
         movies.push({
           id: node.id,
@@ -146,7 +185,6 @@ export class ShikimoriService {
         continue;
       }
 
-      // Check if OVA / Special
       if (
         rawKind.includes('ova') ||
         rawKind.includes('спешл') ||
@@ -169,11 +207,9 @@ export class ShikimoriService {
         continue;
       }
 
-      // Main TV Series classification
       let seasonLabel = `Сезон ${mainSeasonCounter}`;
       const lowerRu = titleRu.toLowerCase();
 
-      // Bleach specific parts detection
       if (urlSlug.includes('bleach') || lowerRu.includes('блич')) {
         if (node.id === 269 || year === 2004) {
           seasonLabel = 'Сезон 1 (366 серий)';

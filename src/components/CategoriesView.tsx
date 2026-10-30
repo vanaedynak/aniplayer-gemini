@@ -1,92 +1,163 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
+import { ShikimoriService, ANIME_GENRES } from '../services/shikimori';
 import { AniLibriaService } from '../services/anilibria';
 import { AnimeTitle } from '../types/anime';
-import { Layers, Sparkles } from 'lucide-react';
+import { Layers, Star, ArrowUpDown } from 'lucide-react';
 
-const GENRES = [
-  'Все',
-  'Сёнэн',
-  'Экшен',
-  'Комедия',
-  'Драма',
-  'Фэнтези',
-  'Романтика',
-  'Приключения',
-  'Детектив',
-  'Повседневность',
-  'Мистика',
+const SORT_OPTIONS = [
+  { key: 'ranked', label: 'По рейтингу' },
+  { key: 'popularity', label: 'По популярности' },
+  { key: 'aired_on', label: 'По дате выхода' },
 ];
 
 export const CategoriesView: React.FC = () => {
-  const { openAnime } = usePlayerStore();
-  const [selectedGenre, setSelectedGenre] = useState('Все');
+  const { openAnimeDetails } = usePlayerStore();
+  const [selectedGenreId, setSelectedGenreId] = useState<number>(0);
+  const [selectedSort, setSelectedSort] = useState<string>('ranked');
   const [titles, setTitles] = useState<AnimeTitle[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [hasMore, setHasMore] = useState<boolean>(true);
 
+  const shikimori = ShikimoriService.getInstance();
   const anilibria = AniLibriaService.getInstance();
 
-  React.useEffect(() => {
+  const loadTitles = async (genreId: number, sort: string, pageNum: number, append: boolean = false) => {
     setLoading(true);
-    anilibria.search(selectedGenre === 'Все' ? 'а' : selectedGenre).then((res) => {
-      setTitles(res);
+    try {
+      const list = await shikimori.getCatalog(genreId, sort, pageNum, 36);
+      if (append) {
+        setTitles((prev) => [...prev, ...list]);
+      } else {
+        setTitles(list);
+      }
+      setHasMore(list.length === 36);
+    } catch (err) {
+      console.error('Error loading catalog:', err);
+    } finally {
       setLoading(false);
-    });
-  }, [selectedGenre]);
+    }
+  };
+
+  useEffect(() => {
+    setPage(1);
+    loadTitles(selectedGenreId, selectedSort, 1, false);
+  }, [selectedGenreId, selectedSort]);
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    loadTitles(selectedGenreId, selectedSort, nextPage, true);
+  };
+
+  const handleSelectAnime = async (anime: AnimeTitle) => {
+    let full = anime;
+    if (anime.shikimoriId) {
+      const details = await shikimori.getAnimeDetails(anime.shikimoriId);
+      if (details) full = details;
+    }
+    // Check AniLibria for episodes
+    const alResults = await anilibria.search(full.titleRu || full.titleEn);
+    if (alResults.length > 0 && alResults[0].episodes.length > 0) {
+      full.episodes = alResults[0].episodes;
+      full.hasAniLibria = true;
+      full.anilibriaCode = alResults[0].anilibriaCode;
+    }
+    openAnimeDetails(full);
+  };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 select-none">
-      <div className="flex items-center space-x-2 text-white">
-        <Layers size={22} className="text-violet-400" />
-        <h2 className="text-2xl font-black tracking-tight">Каталог и категории</h2>
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 select-none max-w-7xl mx-auto w-full">
+      {/* Header & Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center space-x-2 text-white">
+          <Layers size={22} className="text-violet-400" />
+          <h2 className="text-2xl font-black tracking-tight">Каталог аниме со всего мира</h2>
+        </div>
+
+        {/* Sort selector */}
+        <div className="flex items-center space-x-2 bg-[#121620] px-3 py-1.5 rounded-full border border-white/5">
+          <ArrowUpDown size={14} className="text-gray-400" />
+          <span className="text-xs text-gray-400 font-medium">Сортировка:</span>
+          {SORT_OPTIONS.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => setSelectedSort(s.key)}
+              className={`text-xs font-bold px-2.5 py-1 rounded-full transition ${
+                selectedSort === s.key
+                  ? 'bg-violet-600 text-white shadow-neon'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Genre pills */}
-      <div className="flex items-center space-x-2 overflow-x-auto pb-2">
-        {GENRES.map((g) => (
+      {/* Genre Filter Pills */}
+      <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
+        {ANIME_GENRES.map((g) => (
           <button
-            key={g}
-            onClick={() => setSelectedGenre(g)}
-            className={`px-4 py-2 rounded-2xl text-xs font-semibold transition shrink-0 ${
-              selectedGenre === g
-                ? 'bg-violet-600 text-white shadow-neon'
-                : 'bg-[#121620] text-gray-400 hover:bg-[#181E2B] hover:text-white'
+            key={g.id}
+            onClick={() => setSelectedGenreId(g.id)}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold transition shrink-0 ${
+              selectedGenreId === g.id
+                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-neon scale-105'
+                : 'bg-[#121620] text-gray-400 hover:bg-[#181E2B] hover:text-white border border-white/5'
             }`}
           >
-            {g}
+            {g.name}
           </button>
         ))}
       </div>
 
-      {/* Grid of anime */}
-      {loading ? (
-        <div className="py-20 text-center text-xs text-gray-500">Загрузка каталога...</div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {titles.map((anime) => (
-            <div
-              key={anime.id}
-              onClick={() => openAnime(anime)}
-              className="bg-[#121620] hover:bg-[#181E2B] rounded-2xl overflow-hidden cursor-pointer group transition-all duration-300 border border-white/5 hover:border-violet-500/30 hover:shadow-card flex flex-col"
-            >
-              <div className="relative aspect-[3/4] overflow-hidden">
-                <img
-                  src={anime.poster}
-                  alt={anime.titleRu}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute top-2 right-2 bg-[#0B0E14]/80 backdrop-blur-md text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-white/10">
-                  ★ {anime.score.toFixed(1)}
-                </div>
-              </div>
-              <div className="p-2.5 space-y-1">
-                <h4 className="text-xs font-bold text-white truncate">{anime.titleRu}</h4>
-                <p className="text-[11px] text-gray-400 truncate">
-                  {anime.genres.slice(0, 2).join(', ') || 'Аниме'}
-                </p>
+      {/* Anime Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        {titles.map((anime) => (
+          <div
+            key={anime.id}
+            onClick={() => handleSelectAnime(anime)}
+            className="bg-[#121620] hover:bg-[#181E2B] rounded-2xl overflow-hidden cursor-pointer group transition-all duration-300 border border-white/5 hover:border-violet-500/40 hover:shadow-card flex flex-col"
+          >
+            <div className="relative aspect-[3/4] overflow-hidden bg-black/30">
+              <img
+                src={anime.poster}
+                alt={anime.titleRu}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                loading="lazy"
+              />
+              <div className="absolute top-2 right-2 bg-[#0B0E14]/80 backdrop-blur-md text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10 flex items-center space-x-1">
+                <Star size={10} className="fill-current" />
+                <span>{anime.score ? anime.score.toFixed(1) : '8.0'}</span>
               </div>
             </div>
-          ))}
+            <div className="p-3 space-y-1">
+              <h4 className="text-xs font-bold text-white truncate group-hover:text-violet-300 transition">
+                {anime.titleRu}
+              </h4>
+              <p className="text-[11px] text-gray-400 truncate">
+                {anime.year ? `${anime.year} г.` : 'Аниме'} {anime.episodesTotal ? `· ${anime.episodesTotal} эп.` : ''}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Loading state / Load More */}
+      {loading && (
+        <div className="py-12 text-center text-xs text-gray-500">Загрузка каталога...</div>
+      )}
+
+      {!loading && hasMore && (
+        <div className="text-center pt-4">
+          <button
+            onClick={handleLoadMore}
+            className="bg-[#181E2B] hover:bg-[#202738] text-white text-xs font-bold px-8 py-3 rounded-full border border-white/10 hover:border-violet-500/40 transition shadow"
+          >
+            Загрузить ещё аниме
+          </button>
         </div>
       )}
     </div>

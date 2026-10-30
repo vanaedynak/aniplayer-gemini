@@ -2,13 +2,14 @@ import { create } from 'zustand';
 import { AnimeEpisode, AnimeTitle, FranchiseTree, UserSettings, UserStats, WatchProgress } from '../types/anime';
 import { StorageService } from '../services/storage';
 
-export type ActiveView = 'home' | 'player' | 'profile' | 'categories' | 'manga' | 'collection' | 'leaderboard';
-export type PlayerSourceType = 'anilibria' | 'animixlite' | 'iframe';
+export type ActiveView = 'home' | 'title_detail' | 'player' | 'profile' | 'categories' | 'manga' | 'collection' | 'leaderboard';
+export type PlayerSourceType = 'anilibria' | 'alternative';
 
 interface PlayerState {
   currentView: ActiveView;
-  currentAnime: AnimeTitle | null;
+  selectedAnime: AnimeTitle | null;
   currentEpisode: AnimeEpisode | null;
+  activeVoiceover: string;
   activeSource: PlayerSourceType;
   customIframeUrl: string | null;
   franchiseTree: FranchiseTree | null;
@@ -20,13 +21,15 @@ interface PlayerState {
 
   // Actions
   setView: (view: ActiveView) => void;
-  openAnime: (anime: AnimeTitle, episodeOrdinal?: number) => void;
+  openAnimeDetails: (anime: AnimeTitle) => void;
+  startWatching: (anime: AnimeTitle, episodeOrdinal?: number, voiceover?: string) => void;
   playEpisode: (episode: AnimeEpisode) => void;
-  setPlayerSource: (source: PlayerSourceType, iframeUrl?: string) => void;
+  setVoiceover: (voiceover: string, iframeUrl?: string) => void;
   setFranchiseTree: (tree: FranchiseTree | null) => void;
   saveProgress: (progress: WatchProgress) => void;
   refreshProgress: () => void;
   updateSettings: (patch: Partial<UserSettings>) => void;
+  setTheme: (theme: 'animix' | 'cyber' | 'oled') => void;
   setSearchOpen: (open: boolean) => void;
   setUpdateAvailable: (update: any) => void;
 }
@@ -35,8 +38,9 @@ const storage = StorageService.getInstance();
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentView: 'home',
-  currentAnime: null,
+  selectedAnime: null,
   currentEpisode: null,
+  activeVoiceover: 'AniLibria',
   activeSource: 'anilibria',
   customIframeUrl: null,
   franchiseTree: null,
@@ -48,34 +52,55 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   setView: (view) => set({ currentView: view }),
 
-  openAnime: (anime, episodeOrdinal = 1) => {
+  openAnimeDetails: (anime) => {
+    set({
+      selectedAnime: anime,
+      currentView: 'title_detail',
+    });
+  },
+
+  startWatching: (anime, episodeOrdinal = 1, voiceover = 'AniLibria') => {
     let ep = anime.episodes.find((e) => e.ordinal === episodeOrdinal);
     if (!ep && anime.episodes.length > 0) {
       ep = anime.episodes[0];
     }
+    if (!ep) {
+      // Create a default episode structure
+      ep = {
+        id: `${anime.id}-${episodeOrdinal}`,
+        ordinal: episodeOrdinal,
+        title: `${episodeOrdinal} серия`,
+        thumbnail: anime.poster,
+      };
+    }
+
+    const isAl = voiceover === 'AniLibria' && (ep.hls?.fhd || ep.hls?.hd || ep.hls?.sd);
 
     set({
-      currentAnime: anime,
-      currentEpisode: ep || null,
+      selectedAnime: anime,
+      currentEpisode: ep,
       currentView: 'player',
-      activeSource: ep?.hls ? 'anilibria' : 'iframe',
+      activeVoiceover: voiceover,
+      activeSource: isAl ? 'anilibria' : 'alternative',
     });
   },
 
   playEpisode: (episode) => {
-    const { currentAnime } = get();
+    const { selectedAnime, activeVoiceover } = get();
+    const isAl = activeVoiceover === 'AniLibria' && (episode.hls?.fhd || episode.hls?.hd || episode.hls?.sd);
+
     set({
       currentEpisode: episode,
-      activeSource: episode.hls ? 'anilibria' : 'iframe',
+      activeSource: isAl ? 'anilibria' : 'alternative',
     });
 
-    if (currentAnime) {
+    if (selectedAnime) {
       storage.saveProgress({
-        animeId: currentAnime.id,
-        animeTitle: currentAnime.titleRu,
-        animePoster: currentAnime.poster,
+        animeId: selectedAnime.id,
+        animeTitle: selectedAnime.titleRu,
+        animePoster: selectedAnime.poster,
         seasonNumber: 1,
-        seasonLabel: currentAnime.season || '1 сезон',
+        seasonLabel: selectedAnime.season || '1 сезон',
         episodeNumber: episode.ordinal,
         currentTime: 0,
         duration: 1440,
@@ -89,9 +114,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
-  setPlayerSource: (source, iframeUrl) => {
+  setVoiceover: (voiceover, iframeUrl) => {
+    const { currentEpisode } = get();
+    const isAl = voiceover === 'AniLibria' && (currentEpisode?.hls?.fhd || currentEpisode?.hls?.hd);
     set({
-      activeSource: source,
+      activeVoiceover: voiceover,
+      activeSource: isAl ? 'anilibria' : 'alternative',
       customIframeUrl: iframeUrl || null,
     });
   },
@@ -116,10 +144,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   updateSettings: (patch) => {
     const updated = storage.saveSettings(patch);
     set({ settings: updated });
-    // Apply UI scaling dynamically
-    if (patch.uiScale) {
-      document.documentElement.style.setProperty('--ui-scale', String(patch.uiScale));
-    }
+  },
+
+  setTheme: (theme) => {
+    const updated = storage.saveSettings({ theme });
+    set({ settings: updated });
+    // Update theme class on HTML element
+    document.documentElement.classList.remove('theme-animix', 'theme-cyber', 'theme-oled');
+    document.documentElement.classList.add(`theme-${theme}`);
   },
 
   setSearchOpen: (open) => set({ isSearchOpen: open }),

@@ -12,6 +12,7 @@ win:
     - target: nsis
       arch:
         - x64
+  icon: build/icon.ico
   artifactName: ${productName}-Setup-${version}.${ext}
 nsis:
   oneClick: false
@@ -19,6 +20,8 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: AniPlayer
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
 publish:
   provider: github
   owner: vanaedynak

@@ -3,10 +3,10 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { ShikimoriService } from '../services/shikimori';
 import { AniLibriaService } from '../services/anilibria';
 import { AnimeTitle } from '../types/anime';
-import { Search, X, Sparkles, Film, Star } from 'lucide-react';
+import { Search, X, Star } from 'lucide-react';
 
 export const SearchModal: React.FC = () => {
-  const { isSearchOpen, setSearchOpen, openAnime, setFranchiseTree } = usePlayerStore();
+  const { isSearchOpen, setSearchOpen, openAnimeDetails, setFranchiseTree } = usePlayerStore();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<AnimeTitle[]>([]);
   const [loading, setLoading] = useState(false);
@@ -24,21 +24,19 @@ export const SearchModal: React.FC = () => {
       setLoading(true);
 
       try {
-        // Query both Shikimori and AniLibria concurrently
         const [shikiResults, anilibriaResults] = await Promise.all([
           shikimori.search(query),
           anilibria.search(query),
         ]);
 
-        // Merge results: match AniLibria items by titles
         const merged: AnimeTitle[] = [];
 
-        // Add AniLibria results first
+        // Add AniLibria results
         for (const al of anilibriaResults) {
           merged.push({ ...al, hasAniLibria: true });
         }
 
-        // Add Shikimori results, marking whether AniLibria has them
+        // Add Shikimori results
         for (const sh of shikiResults) {
           const alreadyInList = merged.some(
             (m) =>
@@ -47,7 +45,6 @@ export const SearchModal: React.FC = () => {
           );
 
           if (!alreadyInList) {
-            // Check if any AniLibria result matches this shikimori anime
             const matchedAl = anilibriaResults.find(
               (al) =>
                 al.titleRu.toLowerCase().includes(sh.titleRu.toLowerCase()) ||
@@ -79,28 +76,35 @@ export const SearchModal: React.FC = () => {
   const handleSelectAnime = async (anime: AnimeTitle) => {
     setSearchOpen(false);
 
-    // If it has anilibriaCode or ID, fetch full episodes
     let readyAnime = anime;
-    if (anime.anilibriaCode) {
-      const fullAl = await anilibria.getTitleByCode(anime.anilibriaCode);
-      if (fullAl) readyAnime = fullAl;
-    } else if (anime.hasAniLibria && anime.id) {
-      const fullAl = await anilibria.getTitleById(anime.id);
-      if (fullAl) readyAnime = fullAl;
+    if (anime.shikimoriId) {
+      const details = await shikimori.getAnimeDetails(anime.shikimoriId);
+      if (details) readyAnime = { ...readyAnime, ...details };
     }
 
-    // Load franchise tree from Shikimori
-    if (anime.shikimoriId) {
-      shikimori.getFranchise(anime.shikimoriId).then(setFranchiseTree);
+    // Check AniLibria for episodes if not attached
+    if (readyAnime.episodes.length === 0) {
+      const alResults = await anilibria.search(readyAnime.titleRu || readyAnime.titleEn);
+      if (alResults.length > 0 && alResults[0].episodes.length > 0) {
+        readyAnime.episodes = alResults[0].episodes;
+        readyAnime.hasAniLibria = true;
+        readyAnime.anilibriaCode = alResults[0].anilibriaCode;
+      }
+    }
+
+    // Load franchise
+    if (readyAnime.shikimoriId) {
+      shikimori.getFranchise(readyAnime.shikimoriId).then(setFranchiseTree);
     } else {
-      shikimori.search(anime.titleRu || anime.titleEn).then((res) => {
+      shikimori.search(readyAnime.titleRu || readyAnime.titleEn).then((res) => {
         if (res.length > 0 && res[0].shikimoriId) {
           shikimori.getFranchise(res[0].shikimoriId).then(setFranchiseTree);
         }
       });
     }
 
-    openAnime(readyAnime);
+    // Open anime details page
+    openAnimeDetails(readyAnime);
   };
 
   return (
@@ -114,7 +118,7 @@ export const SearchModal: React.FC = () => {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск аниме по-русски или по-английски (напр. «атака титанов», «bleach»)..."
+            placeholder="Поиск аниме со всего мира (напр. «атака титанов», «bleach»)..."
             className="flex-1 bg-transparent text-white placeholder-gray-500 text-sm focus:outline-none"
           />
           {query && (
@@ -134,7 +138,7 @@ export const SearchModal: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {loading && (
             <div className="text-center py-8 text-xs text-gray-400">
-              Поиск по базам Shikimori и AniLibria...
+              Поиск по глобальным базам аниме...
             </div>
           )}
 
