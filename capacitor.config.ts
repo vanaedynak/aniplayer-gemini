@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.aniplayer.app',
-  appName: 'AniPlayer',
+  appId: 'com.anigemini.app',
+  appName: 'AniGemini',
   webDir: 'dist',
   plugins: {
     StatusBar: {
@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
   },
   server: {
     androidScheme: 'https',
-    iosScheme: 'aniplayer',
+    iosScheme: 'anigemini',
   },
   ios: {
     contentInset: 'always',

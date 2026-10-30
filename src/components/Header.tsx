@@ -11,16 +11,53 @@ export const Header: React.FC = () => {
   } = usePlayerStore();
 
   const [isMaximized, setIsMaximized] = useState(false);
-  const [appVersion, setAppVersion] = useState<string>('1.0.3');
+  const [appVersion, setAppVersion] = useState<string>('1.0.4');
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'downloading' | 'ready' | 'error'>('idle');
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
     if (window.electronAPI) {
       window.electronAPI.getAppVersion().then(setAppVersion);
       window.electronAPI.isMaximized().then(setIsMaximized);
       const unsubscribe = window.electronAPI.onWindowStateChange(setIsMaximized);
-      return () => unsubscribe();
+
+      const unsubProgress = (window.electronAPI as any).onUpdateProgress?.((data: any) => {
+        setUpdateStatus('downloading');
+        setDownloadProgress(data.percent || 0);
+      });
+
+      const unsubReady = (window.electronAPI as any).onUpdateReady?.(() => {
+        setUpdateStatus('ready');
+      });
+
+      const unsubError = (window.electronAPI as any).onUpdateError?.((err: string) => {
+        setUpdateStatus('error');
+        setErrorMessage(err);
+      });
+
+      return () => {
+        unsubscribe();
+        unsubProgress?.();
+        unsubReady?.();
+        unsubError?.();
+      };
     }
   }, []);
+
+  const handleUpdateClick = () => {
+    if (!updateAvailable?.downloadUrl) return;
+
+    if ((window.electronAPI as any)?.downloadAndInstallUpdate) {
+      setUpdateStatus('downloading');
+      setDownloadProgress(0);
+      (window.electronAPI as any).downloadAndInstallUpdate(updateAvailable.downloadUrl);
+    } else if (window.electronAPI?.openExternal) {
+      window.electronAPI.openExternal(updateAvailable.downloadUrl);
+    } else {
+      window.open(updateAvailable.downloadUrl, '_blank');
+    }
+  };
 
   const handleMinimize = () => {
     if (window.electronAPI?.minimize) {
@@ -73,7 +110,7 @@ export const Header: React.FC = () => {
             </div>
           </div>
           <span className="text-xl font-black tracking-tight text-white">
-            Ani<span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">Player</span>
+            Ani<span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">Gemini</span>
           </span>
         </div>
       </div>
@@ -97,18 +134,51 @@ export const Header: React.FC = () => {
       {/* Right: Actions, Avatar, Window Controls */}
       <div className="flex items-center space-x-3 no-drag">
         {updateAvailable && (
-          <button
-            onClick={() => {
-              if (updateAvailable.downloadUrl) {
-                window.electronAPI?.openExternal(updateAvailable.downloadUrl);
-              }
-            }}
-            className="flex items-center space-x-1.5 px-3 py-1 bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-xs font-bold rounded-full shadow-lg hover:scale-105 transition animate-bounce"
-            title={`Доступно обновление v${updateAvailable.version}`}
-          >
-            <Download size={13} />
-            <span>Обновить</span>
-          </button>
+          <div>
+            {updateStatus === 'idle' && (
+              <button
+                onClick={handleUpdateClick}
+                className="flex items-center space-x-1.5 px-3 py-1 bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-xs font-bold rounded-full shadow-lg hover:scale-105 transition animate-pulse"
+                title={`Доступно обновление v${updateAvailable.version}`}
+              >
+                <Download size={13} />
+                <span>Обновить до v{updateAvailable.version}</span>
+              </button>
+            )}
+
+            {updateStatus === 'downloading' && (
+              <div className="flex items-center space-x-2 px-3 py-1 bg-[#161B26] border border-emerald-500/40 rounded-full text-xs shadow-lg">
+                <div className="w-16 h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-200"
+                    style={{ width: `${downloadProgress}%` }}
+                  />
+                </div>
+                <span className="font-mono text-emerald-400 font-bold">{downloadProgress}%</span>
+              </div>
+            )}
+
+            {updateStatus === 'ready' && (
+              <div className="flex items-center space-x-1.5 px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full shadow-lg animate-bounce">
+                <Sparkles size={13} />
+                <span>Перезапуск...</span>
+              </div>
+            )}
+
+            {updateStatus === 'error' && (
+              <button
+                onClick={() => {
+                  if (updateAvailable.downloadUrl) {
+                    window.electronAPI?.openExternal(updateAvailable.downloadUrl);
+                  }
+                }}
+                className="text-xs text-red-400 hover:text-red-300 font-semibold underline px-2 py-1"
+                title="Скачать вручную"
+              >
+                Ошибка. Скачать вручную
+              </button>
+            )}
+          </div>
         )}
 
         {/* User Profile Avatar with Glowing Border */}

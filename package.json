@@ -1,8 +1,8 @@
 {
-  "name": "aniplayer",
-  "version": "1.0.3",
+  "name": "anigemini",
+  "version": "1.0.4",
   "type": "module",
-  "description": "AniPlayer — аниме-плеер нового поколения для Windows и iPad",
+  "description": "AniGemini — аниме-плеер нового поколения для Windows и iPad",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",

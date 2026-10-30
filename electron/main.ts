@@ -146,6 +146,72 @@ ipcMain.handle('check-for-updates', async () => {
   }
 });
 
+ipcMain.handle('download-and-install-update', async (_event, downloadUrl: string) => {
+  if (!downloadUrl) return { success: false, error: 'No download URL' };
+
+  try {
+    const fs = await import('node:fs');
+    const { spawn } = await import('node:child_process');
+
+    const tempDir = app.getPath('temp');
+    const installerPath = path.join(tempDir, 'AniGemini-Update-Installer.exe');
+
+    if (fs.existsSync(installerPath)) {
+      try {
+        fs.unlinkSync(installerPath);
+      } catch {}
+    }
+
+    const res = await fetch(downloadUrl);
+    if (!res.ok) {
+      throw new Error(`Failed to download installer: HTTP ${res.status}`);
+    }
+
+    const totalBytes = Number(res.headers.get('content-length') || 0);
+    let downloadedBytes = 0;
+
+    const fileStream = fs.createWriteStream(installerPath);
+    const reader = res.body!.getReader();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      downloadedBytes += value.length;
+      fileStream.write(Buffer.from(value));
+
+      if (totalBytes > 0) {
+        const percent = Math.round((downloadedBytes / totalBytes) * 100);
+        win?.webContents.send('update-progress', { percent, downloadedBytes, totalBytes });
+      }
+    }
+
+    await new Promise((resolve) => fileStream.end(resolve));
+
+    win?.webContents.send('update-ready');
+
+    setTimeout(() => {
+      try {
+        const installer = spawn(installerPath, ['/S', '--force-run'], {
+          detached: true,
+          stdio: 'ignore',
+        });
+        installer.unref();
+      } catch (err) {
+        spawn(installerPath, [], { detached: true, stdio: 'ignore' }).unref();
+      }
+      setTimeout(() => {
+        app.quit();
+      }, 600);
+    }, 1200);
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Update download error:', err);
+    win?.webContents.send('update-error', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
 function isNewerVersion(remote: string, current: string): boolean {
   const parse = (v: string) => v.split('.').map((n) => parseInt(n, 10) || 0);
   const r = parse(remote);

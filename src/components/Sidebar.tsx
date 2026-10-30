@@ -163,7 +163,7 @@ export const Sidebar: React.FC = () => {
         {/* Footer Brand Info */}
         <div className="pt-2 text-center">
           <span className="text-[11px] font-bold text-gray-400 tracking-wider">
-            AniPlayer v1.0.3
+            AniGemini v1.0.4
           </span>
         </div>
       </div>

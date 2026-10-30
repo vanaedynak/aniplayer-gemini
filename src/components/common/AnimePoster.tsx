@@ -63,7 +63,7 @@ export const AnimePoster: React.FC<AnimePosterProps> = ({
         </span>
         <span className="text-[10px] text-violet-400/80 font-medium mt-1 flex items-center space-x-1">
           <Sparkles size={10} />
-          <span>AniPlayer</span>
+          <span>AniGemini</span>
         </span>
         {badge}
       </div>

@@ -101,13 +101,13 @@ jobs:
           mkdir -p build/Payload
           cp -r build/App.xcarchive/Products/Applications/App.app build/Payload/
           cd build
-          zip -r AniPlayer.ipa Payload
+          zip -r AniGemini.ipa Payload
 
       - name: Upload iPad Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ipad-ipa
-          path: ios/App/build/AniPlayer.ipa
+          path: ios/App/build/AniGemini.ipa
 
   release:
     needs: [version, build-windows, build-ipad]
@@ -139,23 +139,23 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: AniPlayer ${{ needs.version.outputs.tag }}
+          name: AniGemini ${{ needs.version.outputs.tag }}
           body: |
-            ## Релиз AniPlayer ${{ needs.version.outputs.tag }}
+            ## Релиз AniGemini ${{ needs.version.outputs.tag }}
             
-            Кроссплатформенный аниме-плеер в стиле Animix для Windows и iPad.
+            Кроссплатформенный аниме-плеер нового поколения для Windows и iPad.
+            
+            ### Новое в этой версии:
+            - **Новое имя «AniGemini»**: уникальный идентификатор приложения (`com.anigemini.desktop`), изолированный путь установки и реестр. Теперь плеер не конфликтует и не удаляет другие плееры на компьютере.
+            - **Встроенное автообновление в один клик**: в шапке плеера можно нажать «Обновить», плеер сам скачает обновление, покажет шкалу прогресса, тихо установит себя и перезапустится!
+            - **Кнопки окна**: кнопки `✕` (Выйти/Закрыть), `▢` (Развернуть), `─` (Свернуть) всегда доступны в правом верхнем углу.
+            - **Нативный UI-масштаб**: reflow без сдвигов и черных полос при 80% и 120%.
+            - **Автоматический резолв постеров**: никаких скетчей «404 not found» — постеры гарантированно подтягиваются даже для тайтлов с ограничениями в Shikimori (Тетрадь смерти, Re:Zero 4, Steel Ball Run).
+            - **Полная сетка серий**: автоматическая загрузка всех 25 серий Врат Штейна, 28 серий Фрирен, и гарантированный список серий для всех тайтлов мира.
             
             ### Файлы для установки:
-            - **Windows**: `AniPlayer-Setup-*.exe` — запускаемый установщик с ярлыком на рабочем столе и автообновлениями.
-            - **iPad**: `AniPlayer.ipa` — неподписанный пакет для установки через сайдлоад (TrollStore, AltStore, Sideloadly, Scarlet).
-            
-            ### Возможности:
-            - Темная эстетика Animix (сетка недавних, часы просмотра, карусели серий).
-            - HLS-стриминг с AniLibria в качестве до 1080p FHD.
-            - Альтернативные озвучки (Studio Band и др.) через открытые плееры YummyAnime.
-            - Хронологическое дерево франшиз Shikimori (основные сезоны с частями, фильмы, спешлы).
-            - Умный автопропуск опенингов и эндингов с таймером 5 сек.
-            - Двойной тап перемотки ±10 сек для iPad с суммированием и автоскрытием статус-бара.
+            - **Windows**: `AniGemini-Setup-*.exe` — автономный установщик с ярлыком на рабочем столе и поддержкой автообновлений.
+            - **iPad**: `AniGemini.ipa` — неподписанный пакет для установки через сайдлоад (TrollStore, AltStore, Sideloadly, Scarlet).
           files: final-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

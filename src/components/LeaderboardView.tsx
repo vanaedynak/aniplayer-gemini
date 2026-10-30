@@ -19,7 +19,7 @@ export const LeaderboardView: React.FC = () => {
 
       <div className="bg-[#121620] rounded-3xl p-6 border border-white/5 space-y-4">
         <p className="text-xs text-gray-400">
-          Топ пользователей по общему времени просмотра в приложении AniPlayer.
+          Топ пользователей по общему времени просмотра в приложении AniGemini.
         </p>
 
         <div className="space-y-2">

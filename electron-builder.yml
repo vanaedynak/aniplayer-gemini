@@ -1,5 +1,5 @@
-appId: com.aniplayer.desktop
-productName: AniPlayer
+appId: com.anigemini.desktop
+productName: AniGemini
 directories:
   output: release
   buildResources: build
@@ -19,7 +19,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: AniPlayer
+  shortcutName: AniGemini
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
 publish:
