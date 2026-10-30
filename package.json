@@ -1,6 +1,6 @@
 {
   "name": "aniplayer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "AniPlayer — аниме-плеер нового поколения для Windows и iPad",
   "main": "dist-electron/main.js",
